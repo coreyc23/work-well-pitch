@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Well — Thrive Community Coalition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Montserrat', sans-serif; background: #FAFAF8; color: #231F20; }
+  :root {
+    --green: #478B34;
+    --green-light: #9FC195;
+    --green-pale: #EFF6ED;
+    --gray: #868485;
+    --dark: #231F20;
+    --cream: #FAFAF8;
+    --white: #FFFFFF;
+  }
+
+  /* Tweaks Panel */
+  #tweaks-panel {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    width: 300px;
+    z-index: 9999;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    font-family: 'Montserrat', sans-serif;
+  }
+  #tweaks-panel.visible { display: block; }
+  #tweaks-panel h3 { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #478B34; margin-bottom: 16px; }
+  .tweak-group { margin-bottom: 14px; }
+  .tweak-label { font-size: 11px; font-weight: 600; color: #868485; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; display: block; }
+  .tweak-input { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Montserrat', sans-serif; font-size: 12px; color: #231F20; }
+  .tweak-select { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Montserrat', sans-serif; font-size: 12px; color: #231F20; background: white; }
+  .tweak-row { display: flex; gap: 8px; }
+  .tweak-btn { flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; background: white; color: #231F20; transition: all 0.15s; }
+  .tweak-btn.active { background: #478B34; color: white; border-color: #478B34; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<div id="tweaks-panel">
+  <h3>Tweaks</h3>
+  <div class="tweak-group">
+    <label class="tweak-label">Employer Name</label>
+    <input class="tweak-input" id="tw-employer" type="text" placeholder="Acme Manufacturing Co.">
+  </div>
+  <div class="tweak-group">
+    <label class="tweak-label">Industry</label>
+    <select class="tweak-select" id="tw-industry">
+      <option value="manufacturing">Manufacturing / Production</option>
+      <option value="healthcare">Healthcare & Long-Term Care</option>
+      <option value="hospitality">Hospitality & Food Service</option>
+      <option value="retail">Retail & Distribution</option>
+      <option value="construction">Construction & Trades</option>
+      <option value="nonprofit">Social Services / Nonprofits</option>
+    </select>
+  </div>
+  <div class="tweak-group">
+    <label class="tweak-label">Visual Theme</label>
+    <div class="tweak-row" id="tw-theme">
+      <button class="tweak-btn active" data-theme="professional">Clean</button>
+      <button class="tweak-btn" data-theme="bold">Bold</button>
+      <button class="tweak-btn" data-theme="warm">Warm</button>
+    </div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── Brand data ────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "employerName": "Vinyl Kraft ",
+  "industry": "manufacturing",
+  "theme": "professional"
+}/*EDITMODE-END*/;
+
+const INDUSTRY_DATA = {
+  manufacturing: {
+    label: "Manufacturing & Production",
+    headline: "Keep your floor running.",
+    subheadline: "Reduce absenteeism and early exits in high-demand production roles.",
+    challenge: "High physical-demand roles create unique pressures—attendance instability, injury-adjacent stress, and workforce gaps that halt production.",
+    stat1: { n: "62%", label: "of turnover happens in the first 90 days" },
+    stat2: { n: "3–5×", label: "cost of replacing an hourly worker" },
+    stat3: { n: "40%", label: "of absenteeism tied to non-work barriers" },
+    recommended: 2,
+  },
+  healthcare: {
+    label: "Healthcare & Long-Term Care",
+    headline: "Protect your most vital asset.",
+    subheadline: "Prevent burnout and early exits in high-stress care environments.",
+    challenge: "Staff burnout, recovery-sensitive incidents, and emotional load create compounding retention crises in care settings.",
+    stat1: { n: "27%", label: "annual turnover in long-term care settings" },
+    stat2: { n: "2×", label: "cost burden when a licensed caregiver exits" },
+    stat3: { n: "1 in 3", label: "healthcare workers report burnout" },
+    recommended: 2,
+  },
+  hospitality: {
+    label: "Hospitality & Food Service",
+    headline: "Stop losing staff in week two.",
+    subheadline: "Stabilize your workforce during the highest-risk turnover window.",
+    challenge: "High-volume hiring with first-90-day churn drains recruitment budgets and disrupts service quality.",
+    stat1: { n: "73%", label: "annual turnover rate in hospitality" },
+    stat2: { n: "6 weeks", label: "highest-risk turnover window for new hires" },
+    stat3: { n: "$5,864", label: "average cost to replace a restaurant employee" },
+    recommended: 1,
+  },
+  retail: {
+    label: "Retail & Distribution",
+    headline: "Stable shifts. Fewer callouts.",
+    subheadline: "Solve the schedule-disruption cycle driven by off-the-clock barriers.",
+    challenge: "Shift-based work amplifies financial instability, transportation gaps, and schedule unpredictability—feeding a churn cycle.",
+    stat1: { n: "59%", label: "of retail turnover is preventable" },
+    stat2: { n: "$3,500+", label: "per hourly retail replacement" },
+    stat3: { n: "52%", label: "of absences tied to transportation or financial stress" },
+    recommended: 1,
+  },
+  construction: {
+    label: "Construction & Trades",
+    headline: "Retain the crew you trained.",
+    subheadline: "Support workers through seasonal transitions and re-entry gaps.",
+    challenge: "Seasonal patterns, housing instability, and gaps after injury or incarceration create recurring pipeline problems.",
+    stat1: { n: "21%", label: "annual turnover in construction" },
+    stat2: { n: "6–8 weeks", label: "to onboard a skilled tradesperson" },
+    stat3: { n: "1 in 5", label: "construction workers impacted by substance use" },
+    recommended: 2,
+  },
+  nonprofit: {
+    label: "Social Services & Nonprofits",
+    headline: "Sustain the people who sustain others.",
+    subheadline: "Combat secondary trauma and burnout in mission-driven teams.",
+    challenge: "Mission-driven staff absorb extraordinary emotional weight—without support structures to match.",
+    stat1: { n: "45%", label: "of social service workers experience burnout" },
+    stat2: { n: "30%", label: "annual turnover in nonprofit sector" },
+    stat3: { n: "$8,000+", label: "average cost of replacing a case manager" },
+    recommended: 1,
+  },
+};
+
+const BASELINE = {
+  name: "Core Work Well",
+  sub: "Workforce Stabilization — the foundation",
+  description: "A post-hire stabilization layer that reduces early turnover without altering your HR structure. Every Work Well engagement starts here.",
+  pricing: { fte: "0.5 FTE", cost: "$65,000", per: "per year" },
+  includes: [
+    "Onsite or hybrid wellness coaching",
+    "Employee stabilization & case management",
+    "Early-risk identification and intervention",
+    "Aggregate impact reporting",
+    "Self-Sufficiency Matrix tracking",
+    "Clear boundaries from HR and management",
+  ],
+  value: "Protect your hiring investment — reduce costly early turnover by stabilizing new employees before small problems become resignations.",
+};
+
+const MODULES = [
+  {
+    code: "A",
+    phase: "Phase 2",
+    when: "After 6–12 months of baseline",
+    name: "Early Employment & Supervisor Support",
+    sub: "Layer on once the baseline is steady",
+    description: "Intensive support during the first 4–6 weeks — the highest-risk turnover window — plus coaching for the supervisors carrying that load.",
+    delta: { fte: "+0.5 FTE", cost: "+$25,000", per: "add-on" },
+    includes: [
+      "Targeted first-4–6-week support",
+      "Supervisor coaching & consultation",
+      "Structured onboarding support",
+      "Self-Sufficiency Matrix deep-dive",
+      "Enhanced early-tenure trend reporting",
+    ],
+    value: "Stop losing employees in the first six weeks. Give your supervisors relief — not more responsibility.",
+    bestFor: "Sites seeing churn in the first 30–60 days, or supervisor strain.",
+    hr: true,
+  },
+  {
+    code: "B",
+    phase: "Phase 3",
+    when: "After Phase 2 is operational",
+    name: "Recovery-to-Work Pathways",
+    sub: "Add when trust and infrastructure are in place",
+    description: "A full continuum — from treatment pipeline to recovery-informed culture change — introduced only after the baseline relationship is established.",
+    delta: { fte: "+0.5 FTE", cost: "+$40,000", per: "add-on" },
+    includes: [
+      "Partnership with SUD treatment providers",
+      "Pre-employment / in-treatment engagement",
+      "Individual Employee Personality Profiles",
+      "Organizational Culture Assessment",
+      "Coordinated treatment-to-workplace transitions",
+    ],
+    value: "Access a motivated, underutilized talent pool. Become the employer people choose — and stay with.",
+    bestFor: "Employers ready to hire individuals in or exiting treatment.",
+    hr: true,
+  },
+];
+
+const THEMES = {
+  professional: {
+    heroBg: "#231F20",
+    heroText: "#FFFFFF",
+    accent: "#478B34",
+    sectionBg: "#FAFAF8",
+    altBg: "#EFF6ED",
+    cardBg: "#FFFFFF",
+    pillarsCard: "#FFFFFF",
+  },
+  bold: {
+    heroBg: "#478B34",
+    heroText: "#FFFFFF",
+    accent: "#231F20",
+    sectionBg: "#FFFFFF",
+    altBg: "#231F20",
+    cardBg: "#FFFFFF",
+    pillarsCard: "#F5F5F3",
+  },
+  warm: {
+    heroBg: "#EFF6ED",
+    heroText: "#231F20",
+    accent: "#478B34",
+    sectionBg: "#FAFAF8",
+    altBg: "#F7F2EE",
+    cardBg: "#FFFFFF",
+    pillarsCard: "#FFFFFF",
+  },
+};
+
+// ─── Logo SVG ──────────────────────────────────────────────────
+function ThriveLogo({ color = "#478B34", size = 32 }) {
+  return (
+    <svg width={size * 10} height={size * 0.9} viewBox="0 0 290 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="22" fontFamily="Montserrat, sans-serif" fontWeight="800" fontSize="22" fill={color} letterSpacing="-0.5">THRIVE</text>
+      <text x="88" y="22" fontFamily="Montserrat, sans-serif" fontWeight="400" fontSize="13" fill={color} letterSpacing="0.5" opacity="0.7">COMMUNITY COALITION</text>
+      
+    </svg>
+  );
+}
+
+// ─── Components ────────────────────────────────────────────────
+function Nav({ employerName, theme, T }) {
+  return (
+    <nav style={{
+      position: "sticky", top: 0, zIndex: 100,
+      background: T.heroBg === "#231F20" ? "#231F20" : "rgba(255,255,255,0.96)",
+      backdropFilter: "blur(8px)",
+      borderBottom: `1px solid ${T.heroBg === "#231F20" ? "rgba(255,255,255,0.1)" : "#eee"}`,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 32px", height: 64,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <ThriveLogo color={T.heroBg === "#231F20" ? "#9FC195" : "#478B34"} size={22} />
+      </div>
+      <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+        {["Impact", "The Problem", "Our Solution", "Tiers", "Get Started"].map(label => (
+          <a key={label} href={`#${label.toLowerCase().replace(/ /g, "-")}`}
+            style={{ fontSize: 11, fontWeight: 600, color: T.heroBg === "#231F20" ? "rgba(255,255,255,0.7)" : "#868485", textDecoration: "none", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+            {label}
+          </a>
+        ))}
+        {employerName && employerName !== "Your Company" && (
+          <div style={{ padding: "5px 12px", background: "#478B34", color: "white", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+            Prepared for {employerName}
+          </div>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+function Hero({ employerName, industry, theme, T }) {
+  const iData = INDUSTRY_DATA[industry];
+  const darkHero = T.heroBg === "#231F20" || T.heroBg === "#478B34";
+  return (
+    <section id="hero" style={{ background: T.heroBg, padding: "96px 0 80px", position: "relative", overflow: "hidden" }}>
+      {/* subtle texture */}
+      <div style={{
+        position: "absolute", inset: 0, opacity: 0.04,
+        backgroundImage: "repeating-linear-gradient(45deg, #9FC195 0px, #9FC195 1px, transparent 1px, transparent 40px)",
+      }}/>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px", position: "relative" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", background: darkHero ? "rgba(159,193,149,0.2)" : "rgba(71,139,52,0.12)", borderRadius: 20, marginBottom: 28 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#9FC195" }}/>
+          <span style={{ fontSize: 11, fontWeight: 700, color: darkHero ? "#9FC195" : "#478B34", letterSpacing: "0.08em", textTransform: "uppercase" }}>Work Well Program</span>
+        </div>
+        <h1 style={{
+          fontSize: "clamp(40px, 6vw, 72px)", fontWeight: 800, color: T.heroText, lineHeight: 1.05,
+          maxWidth: 750, marginBottom: 24, textWrap: "balance",
+          letterSpacing: "-0.02em",
+        }}>
+          {iData.headline}
+        </h1>
+        <p style={{ fontSize: 18, fontWeight: 400, color: darkHero ? "rgba(255,255,255,0.65)" : "rgba(35,31,32,0.6)", maxWidth: 540, lineHeight: 1.6, marginBottom: 40 }}>
+          {iData.subheadline}
+        </p>
+        <div style={{ display: "flex", gap: 40, marginBottom: 52 }}>
+          {[iData.stat1, iData.stat2, iData.stat3].map((s, i) => (
+            <div key={i}>
+              <div style={{ fontSize: 36, fontWeight: 800, color: darkHero ? "#9FC195" : "#478B34", letterSpacing: "-0.02em" }}>{s.n}</div>
+              <div style={{ fontSize: 12, color: darkHero ? "rgba(255,255,255,0.5)" : "#868485", maxWidth: 140, lineHeight: 1.4, marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <a href="#get-started" style={{
+            padding: "14px 28px", background: "#478B34", color: "white",
+            fontWeight: 700, fontSize: 14, borderRadius: 8, textDecoration: "none",
+            letterSpacing: "0.02em", display: "inline-block",
+            transition: "opacity 0.15s",
+          }}>Schedule a Conversation</a>
+          <a href="#the-problem" style={{
+            padding: "14px 28px", background: "transparent",
+            color: darkHero ? "rgba(255,255,255,0.8)" : "#231F20",
+            fontWeight: 600, fontSize: 14, borderRadius: 8, textDecoration: "none",
+            border: `1px solid ${darkHero ? "rgba(255,255,255,0.2)" : "#ddd"}`,
+          }}>See How It Works</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProblemSection({ industry, T }) {
+  const iData = INDUSTRY_DATA[industry];
+  const problems = [
+    { q: "High turnover in the first weeks of employment", a: "Post-hire stabilization focused on early engagement and risk identification." },
+    { q: "Absenteeism tied to housing, transportation, recovery", a: "Barrier identification and practical problem-solving tied directly to attendance." },
+    { q: "Employees disengaging before problems are visible", a: "Regular check-ins and structured assessment tools for early intervention." },
+    { q: "Overloaded HR teams managing issues they aren't built for", a: "A confidential, non-punitive support channel separate from HR and management." },
+  ];
+  return (
+    <section id="the-problem" style={{ background: T.sectionBg, padding: "96px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start" }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>The Problem</p>
+            <h2 style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 24, color: "#231F20" }}>
+              Hiring is expensive.<br/>Losing people is worse.
+            </h2>
+            <p style={{ fontSize: 15, color: "#868485", lineHeight: 1.7, marginBottom: 24 }}>
+              {iData.challenge}
+            </p>
+            <p style={{ fontSize: 15, color: "#868485", lineHeight: 1.7 }}>
+              Most of these exits are preventable. They happen because employees hit barriers — housing, transportation, recovery, finances — that standard HR isn't designed to solve.
+            </p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {problems.map((p, i) => (
+              <div key={i} style={{
+                background: T.cardBg, borderRadius: 10, padding: "20px 24px",
+                borderLeft: "3px solid #478B34", boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#231F20", marginBottom: 6 }}>{p.q}</div>
+                <div style={{ fontSize: 12, color: "#868485", lineHeight: 1.5 }}>{p.a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SolutionSection({ T }) {
+  const pillars = [
+    { letter: "A", title: "Employee Stabilization & Support", desc: "Wellness coaching and case management — housing, transport, recovery, utilities, childcare, finances — tied directly to attendance and engagement." },
+    { letter: "B", title: "Early Risk Identification", desc: "Regular check-ins and structured assessment tools (Self-Sufficiency Matrix) for early intervention before issues become disciplinary or result in turnover." },
+    { letter: "C", title: "Trust-Based Engagement", desc: "Non-punitive, confidential support — completely separate from HR enforcement. A relationship-first approach that encourages early disclosure." },
+    { letter: "D", title: "Employer Insight", desc: "Aggregate trend reporting and early warning signals about workforce stressors. Recommendations — not directives — for leadership." },
+  ];
+  return (
+    <section id="our-solution" style={{ background: T.altBg, padding: "96px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+        <div style={{ textAlign: "center", marginBottom: 56 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Our Solution</p>
+          <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 16, color: T.altBg === "#231F20" ? "white" : "#231F20" }}>
+            Four pillars. One outcome.<br/>Employees who stay.
+          </h2>
+          <p style={{ fontSize: 15, color: T.altBg === "#231F20" ? "rgba(255,255,255,0.6)" : "#868485", maxWidth: 500, margin: "0 auto", lineHeight: 1.6 }}>
+            Work Well operates as a post-hire stabilization layer — aligned with HR, but structurally separate from it.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+          {pillars.map((p, i) => (
+            <div key={i} style={{
+              background: T.pillarsCard, borderRadius: 12, padding: "28px 24px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              ...(T.altBg === "#231F20" ? { background: "rgba(255,255,255,0.06)", color: "white" } : {}),
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, background: "#EFF6ED",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginBottom: 16, fontSize: 14, fontWeight: 800, color: "#478B34",
+              }}>{p.letter}</div>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: T.altBg === "#231F20" ? "white" : "#231F20", marginBottom: 10, lineHeight: 1.3 }}>{p.title}</h3>
+              <p style={{ fontSize: 12, color: T.altBg === "#231F20" ? "rgba(255,255,255,0.6)" : "#868485", lineHeight: 1.6 }}>{p.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 40, padding: "20px 28px", background: T.altBg === "#231F20" ? "rgba(71,139,52,0.2)" : "#EFF6ED", borderRadius: 10, display: "flex", alignItems: "center", gap: 20 }}>
+          <div style={{ width: 3, alignSelf: "stretch", background: "#478B34", borderRadius: 2, flexShrink: 0 }}/>
+          <p style={{ fontSize: 13, color: T.altBg === "#231F20" ? "rgba(255,255,255,0.8)" : "#231F20", lineHeight: 1.6, fontStyle: "italic" }}>
+            <strong>Design Principle:</strong> Work Well succeeds when it remains clearly bounded, relationally grounded, and focused on stabilization — not control. It supports people where traditional workplace systems are least equipped to respond.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TierSection({ T }) {
+  return (
+    <section id="tiers" style={{ background: T.sectionBg, padding: "96px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Phased Engagement</p>
+        <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 12, color: "#231F20" }}>
+          Start with a baseline.<br/>Add modules over time.
+        </h2>
+        <p style={{ fontSize: 15, color: "#868485", marginBottom: 48, lineHeight: 1.6, maxWidth: 620 }}>
+          Every engagement begins with the Core Work Well baseline. Specialized capabilities phase in as modular add-ons — introduced only when the foundation is steady and the organization is ready for more.
+        </p>
+
+        {/* Baseline card */}
+        <div style={{ background: "white", borderRadius: 16, padding: 0, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", border: "2px solid #478B34", overflow: "hidden", marginBottom: 40 }}>
+          <div style={{ background: "#478B34", padding: "10px 28px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "white", letterSpacing: "0.12em", textTransform: "uppercase" }}>Phase 1 · Baseline · Always Included</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.85)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Foundation</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, padding: "40px 48px" }}>
+            <div>
+              <h3 style={{ fontSize: 26, fontWeight: 800, color: "#231F20", marginBottom: 6, letterSpacing: "-0.02em" }}>{BASELINE.name}</h3>
+              <div style={{ fontSize: 12, color: "#478B34", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 16 }}>{BASELINE.sub}</div>
+              <p style={{ fontSize: 14, color: "#868485", lineHeight: 1.7, marginBottom: 22 }}>{BASELINE.description}</p>
+              <div style={{ display: "flex", gap: 28, alignItems: "baseline", paddingTop: 18, borderTop: "1px solid #f0f0ed" }}>
+                <div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: "#231F20", letterSpacing: "-0.02em", lineHeight: 1 }}>{BASELINE.pricing.cost}</div>
+                  <div style={{ fontSize: 11, color: "#868485", marginTop: 4 }}>{BASELINE.pricing.per}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#231F20", lineHeight: 1 }}>{BASELINE.pricing.fte}</div>
+                  <div style={{ fontSize: 11, color: "#868485", marginTop: 4 }}>dedicated coach</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 22, padding: "14px 18px", background: "#EFF6ED", borderRadius: 8, borderLeft: "3px solid #9FC195" }}>
+                <p style={{ fontSize: 12, color: "#231F20", lineHeight: 1.6, fontStyle: "italic" }}>{BASELINE.value}</p>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#868485", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>What's Included</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {BASELINE.includes.map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#EFF6ED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="#478B34" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: 13, color: "#231F20", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Phased roadmap header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
+          <div style={{ height: 1, flex: 1, background: "#e6e6e2" }}/>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#868485", letterSpacing: "0.12em", textTransform: "uppercase" }}>Optional Add-On Modules</div>
+          <div style={{ height: 1, flex: 1, background: "#e6e6e2" }}/>
+        </div>
+        <p style={{ fontSize: 14, color: "#868485", lineHeight: 1.7, maxWidth: 720, marginBottom: 32 }}>
+          Add-ons are introduced one at a time, after the baseline is operational and outcomes are visible. There is no obligation to adopt them — and no penalty for staying with the baseline indefinitely.
+        </p>
+
+        {/* Module cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          {MODULES.map((m, i) => (
+            <div key={i} style={{ background: "white", borderRadius: 14, padding: "32px", border: "1px dashed #9FC195", display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#EFF6ED", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "#478B34" }}>{m.code}</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase" }}>{m.phase} · Add-On</div>
+                      <div style={{ fontSize: 11, color: "#868485", marginTop: 2 }}>{m.when}</div>
+                    </div>
+                  </div>
+                  <h3 style={{ fontSize: 19, fontWeight: 800, color: "#231F20", letterSpacing: "-0.01em", lineHeight: 1.2, marginBottom: 4 }}>{m.name}</h3>
+                  <div style={{ fontSize: 12, color: "#868485", fontStyle: "italic" }}>{m.sub}</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#231F20", letterSpacing: "-0.01em", lineHeight: 1 }}>{m.delta.cost}</div>
+                  <div style={{ fontSize: 10, color: "#868485", marginTop: 3 }}>{m.delta.fte} · {m.delta.per}</div>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 13, color: "#231F20", lineHeight: 1.6 }}>{m.description}</p>
+
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#868485", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Adds to baseline</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {m.includes.map((item, j) => (
+                    <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <div style={{ marginTop: 7, width: 4, height: 4, background: "#478B34", borderRadius: "50%", flexShrink: 0 }}/>
+                      <span style={{ fontSize: 12, color: "#231F20", lineHeight: 1.5 }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ padding: "12px 16px", background: "#EFF6ED", borderRadius: 8, borderLeft: "3px solid #9FC195" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#478B34", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Best for</div>
+                <p style={{ fontSize: 12, color: "#231F20", lineHeight: 1.5 }}>{m.bestFor}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Phasing rationale + governance note */}
+        <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <div style={{ padding: "22px 26px", background: "#231F20", borderRadius: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#9FC195", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Why phase</div>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", lineHeight: 1.7 }}>
+              Each add-on requires trust, data, and operational rhythm that only the baseline produces. Phasing protects implementation quality — we don't bolt on services your floor isn't ready to absorb.
+            </p>
+          </div>
+          <div style={{ padding: "22px 26px", background: "white", border: "1px solid #eee", borderRadius: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#478B34", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Shared HR support (Phase 2+)</div>
+            <p style={{ fontSize: 12, color: "#231F20", lineHeight: 1.7 }}>
+              When add-ons are active, carefully-scoped HR collaboration becomes available — orientation participation, culture integration, and administrative support distinct from coaching. Never discipline, termination, or compliance authority.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ImpactSection({ employerName, T }) {
+  const stats = [
+    { n: "25+", label: "employees actively engaged with Thrive services" },
+    { n: "154", label: "employees supported " },
+    { n: "37+", label: "direct assists & resource coordinations delivered" },
+    { n: "7", label: "supervisor referrals into Work Well" },
+  ];
+  const categories = [
+    { n: 7, label: "Paylocity training support" },
+    { n: 6, label: "Budgeting & financial wellness" },
+    { n: 5, label: "Car repairs & tire assistance" },
+    { n: 5, label: "Clothing — coats, work boots, undergarments" },
+    { n: 4, label: "Court & legal navigation" },
+    { n: 3, label: "Medical appointment assistance" },
+    { n: 3, label: "Housing assistance & advocacy" },
+    { n: 3, label: "Holiday & Christmas support" },
+    { n: 3, label: "Driving privilege assistance" },
+    { n: 3, label: "Electric heaters provided" },
+    { n: 2, label: "Food & grocery support" },
+    { n: 2, label: "Appliance purchases" },
+    { n: 2, label: "Tax filing assistance" },
+    { n: 2, label: "Social Security office support" },
+    { n: 1, label: "Bed provided" },
+    { n: 1, label: "GED / laptop assistance" },
+  ];
+  const stories = [
+    {
+      title: "Recovery & coping",
+      body: "Several employees set and sustained substance-use recovery goals through weekly check-ins — building healthier coping strategies for workplace and personal stressors, with referrals into community recovery resources.",
+    },
+    {
+      title: "Social Security navigation",
+      body: "An older employee anxious about navigating Social Security benefits was supported with a confidential space, a laptop, a coached Zoom appointment with SSA, and help completing documentation — turning a stalled task into a completed one.",
+    },
+    {
+      title: "Path to stable housing",
+      body: "Intensive case management for an employee living in a local hotel: transportation to PMHA appointments, replacing a lost birth certificate and Social Security card, and consistent attendance at housing appointments — moving them toward long-term self-sufficiency.",
+    },
+  ];
+  const isVK = (employerName || "").trim().toLowerCase().startsWith("vinyl kraft");
+  return (
+    <section id="impact" style={{ background: T.altBg, padding: "96px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 24, marginBottom: 48 }}>
+          <div style={{ maxWidth: 640 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>
+              {isVK ? "Vinyl Kraft" : "Proof of Concept"}
+            </p>
+            <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em", color: "#231F20", marginBottom: 16, lineHeight: 1.1 }}>
+              Six months on the floor.<br/>
+              <span style={{ color: "#478B34" }}>Measurable stabilization.</span>
+            </h2>
+            <p style={{ fontSize: 15, color: "#868485", lineHeight: 1.7 }}>
+              From November 2025 through May 2026, Work Well removed barriers that drive absenteeism and early exits at {isVK ? "Vinyl Kraft" : "partner sites"} — transportation, housing, financial hardship, healthcare access, and basic needs.
+            </p>
+          </div>
+          <div style={{ padding: "14px 18px", background: "white", border: "1px solid #E0EDD9", borderRadius: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#478B34", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Reporting Period</div>
+            <div style={{ fontSize: 13, color: "#231F20", fontWeight: 700 }}>Nov 2025 – May 2026</div>
+            <div style={{ fontSize: 11, color: "#868485", marginTop: 2 }}>6-month internal summary</div>
+          </div>
+        </div>
+
+        {/* Stat grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 48 }}>
+          {stats.map((s, i) => (
+            <div key={i} style={{ padding: "28px 24px", background: "white", border: "1px solid #eee", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+              <div style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.03em", color: "#478B34", lineHeight: 1, marginBottom: 12 }}>{s.n}</div>
+              <div style={{ fontSize: 12, color: "#868485", lineHeight: 1.5 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Categories + stories */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 32 }}>
+          <div style={{ padding: "32px", background: "white", border: "1px solid #eee", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#231F20" }}>Where support showed up</div>
+              <div style={{ fontSize: 10, color: "#868485", letterSpacing: "0.06em", textTransform: "uppercase" }}>Occasions</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {categories.map((c, i) => {
+                const max = categories[0].n;
+                const pct = (c.n / max) * 100;
+                return (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
+                    <div style={{ position: "relative", height: 22, display: "flex", alignItems: "center" }}>
+                      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: "#EFF6ED", borderRadius: 4 }}/>
+                      <div style={{ position: "relative", fontSize: 11.5, color: "#231F20", paddingLeft: 10, paddingRight: 10 }}>{c.label}</div>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#478B34", fontVariantNumeric: "tabular-nums", minWidth: 18, textAlign: "right" }}>{c.n}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{ fontSize: 11, color: "#868485", marginTop: 18, lineHeight: 1.5, fontStyle: "italic" }}>
+              Plus monthly coffee socials — building the trust that lets people seek support before issues escalate.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#231F20", marginBottom: 0 }}>Stories behind the numbers</div>
+            {stories.map((s, i) => (
+              <div key={i} style={{ padding: "20px 22px", background: "white", border: "1px solid #eee", borderLeft: "3px solid #9FC195", borderRadius: 10, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#478B34", marginBottom: 8 }}>{s.title}</div>
+                <p style={{ fontSize: 12, color: "#231F20", lineHeight: 1.6 }}>{s.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 40, padding: "20px 28px", background: "#EFF6ED", borderRadius: 10, display: "flex", alignItems: "center", gap: 20 }}>
+          <div style={{ width: 3, alignSelf: "stretch", background: "#478B34", borderRadius: 2, flexShrink: 0 }}/>
+          <p style={{ fontSize: 13, color: "#231F20", lineHeight: 1.7, fontStyle: "italic" }}>
+            Consistent engagement, trust-building, and individualized support from the Wellness Coach continue to positively impact employee wellness, recovery stability, and access to essential community resources — directly strengthening attendance and retention on the {isVK ? "Vinyl Kraft" : "production"} floor.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ROISection({ T }) {
+  const forEmployers = [
+    "Reduced preventable turnover after hire",
+    "Earlier identification of workforce risk",
+    "Improved employee engagement and trust",
+    "A recovery-informed support resource HR typically cannot provide",
+    "Protection of workforce investment through stabilization",
+  ];
+  const forEmployees = [
+    "A confidential, non-punitive source of support",
+    "Practical help navigating life challenges that affect work",
+    "Recovery-informed coaching and advocacy",
+    "A pathway to sustained employment and personal stability",
+    "Access to cross-program referrals and community resources",
+  ];
+  return (
+    <section id="roi" style={{ background: "#EFF6ED", padding: "96px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+        <div style={{ textAlign: "center", marginBottom: 56 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Value Proposition</p>
+          <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em", color: "#231F20", marginBottom: 12 }}>
+            A mutual return on investment.
+          </h2>
+          <p style={{ fontSize: 15, color: "#868485", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>
+            Work Well delivers measurable value to both sides of the employment relationship.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          {[{ title: "For Employers", items: forEmployers, icon: "🏢" }, { title: "For Employees", items: forEmployees, icon: "🤝" }].map((col, ci) => (
+            <div key={ci} style={{ background: "white", borderRadius: 16, padding: "36px", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: "#231F20", marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 40, height: 40, background: "#EFF6ED", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                  {col.icon}
+                </div>
+                {col.title}
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {col.items.map((item, i) => (
+                  <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ width: 4, height: 4, background: "#9FC195", borderRadius: "50%", marginTop: 7, flexShrink: 0 }}/>
+                    <span style={{ fontSize: 13, color: "#231F20", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OnboardingSection({ T }) {
+  const steps = [
+    { n: "01", title: "Workforce Needs Assessment", desc: "Thrive evaluates workforce challenges, turnover patterns, HR structure, and readiness." },
+    { n: "02", title: "Tier Selection & Scope", desc: "Select the appropriate tier; scope, cost, and boundaries are formally documented." },
+    { n: "03", title: "Metrics Alignment", desc: "KPIs, reporting cadence, and data-sharing agreements are established upfront." },
+    { n: "04", title: "Program Launch", desc: "Work Well coach is introduced; employee engagement begins; supervisor orientation completes." },
+    { n: "05", title: "Quarterly Review", desc: "Aggregate data reviewed with leadership; tier adjustments and add-ons considered." },
+  ];
+  return (
+    <section id="get-started" style={{ background: T.sectionBg, padding: "96px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start" }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#478B34", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Getting Started</p>
+            <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em", color: "#231F20", marginBottom: 20 }}>
+              From conversation<br/>to launch in weeks.
+            </h2>
+            <p style={{ fontSize: 15, color: "#868485", lineHeight: 1.7, marginBottom: 32 }}>
+              Work Well follows a structured onboarding sequence designed to align expectations, define scope, and launch support quickly — without disrupting your existing operations.
+            </p>
+            <a href="mailto:info@thriveserves.com" style={{
+              display: "inline-block", padding: "16px 32px", background: "#478B34", color: "white",
+              fontWeight: 700, fontSize: 14, borderRadius: 8, textDecoration: "none", letterSpacing: "0.02em",
+            }}>Reach Out to Thrive</a>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {steps.map((s, i) => (
+              <div key={i} style={{ display: "flex", gap: 20, position: "relative" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "50%", background: "#478B34",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 800, color: "white", flexShrink: 0,
+                  }}>{s.n}</div>
+                  {i < steps.length - 1 && <div style={{ width: 2, flex: 1, background: "#E0EDD9", margin: "4px 0" }}/>}
+                </div>
+                <div style={{ paddingBottom: i < steps.length - 1 ? 24 : 0, paddingTop: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#231F20", marginBottom: 4 }}>{s.title}</div>
+                  <div style={{ fontSize: 12, color: "#868485", lineHeight: 1.5 }}>{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer({ T }) {
+  return (
+    <footer style={{ background: "#231F20", padding: "48px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <ThriveLogo color="#9FC195" size={24} />
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, maxWidth: 420, lineHeight: 1.6 }}>
+            Transforming communities through relationships that nurture faith-inspired hope and holistic wellness in individuals and families.
+          </p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#9FC195", fontStyle: "italic", marginBottom: 4 }}>
+            "The Bridge Between Employment and Stability."
+          </p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Thrive Community Coalition · 2026</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ─── App ───────────────────────────────────────────────────────
+function App() {
+  const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+
+  // Tweaks panel bridge
+  useEffect(() => {
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === '__activate_edit_mode') {
+        document.getElementById('tweaks-panel').classList.add('visible');
+      }
+      if (e.data?.type === '__deactivate_edit_mode') {
+        document.getElementById('tweaks-panel').classList.remove('visible');
+      }
+    });
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+
+    // Wire up DOM tweaks panel inputs
+    const empInput = document.getElementById('tw-employer');
+    const indSelect = document.getElementById('tw-industry');
+    const themeBtns = document.querySelectorAll('#tw-theme .tweak-btn');
+
+    empInput.value = tweaks.employerName !== "Your Company" ? tweaks.employerName : "";
+    indSelect.value = tweaks.industry;
+
+    empInput.addEventListener('input', () => {
+      const v = empInput.value || "Your Company";
+      setTweaks(t => ({ ...t, employerName: v }));
+      window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { employerName: v } }, '*');
+    });
+
+    indSelect.addEventListener('change', () => {
+      setTweaks(t => ({ ...t, industry: indSelect.value }));
+      window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { industry: indSelect.value } }, '*');
+    });
+
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        themeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const theme = btn.dataset.theme;
+        setTweaks(t => ({ ...t, theme }));
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { theme } }, '*');
+      });
+    });
+  }, []);
+
+  const T = THEMES[tweaks.theme] || THEMES.professional;
+
+  return (
+    <div>
+      <Nav employerName={tweaks.employerName} theme={tweaks.theme} T={T} />
+      <Hero employerName={tweaks.employerName} industry={tweaks.industry} theme={tweaks.theme} T={T} />
+      <ImpactSection employerName={tweaks.employerName} T={T} />
+      <ProblemSection industry={tweaks.industry} T={T} />
+      <SolutionSection T={T} />
+      <TierSection T={T} />
+      <ROISection T={T} />
+      <OnboardingSection T={T} />
+      <Footer T={T} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
